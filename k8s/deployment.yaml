@@ -7,7 +7,7 @@ spec:
   selector:
     matchLabels:
       app: valet-pod
-  replicas: 1
+  replicas: 2
   template:
     metadata:
       labels:
