@@ -1,0 +1,25 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  namespace: argocd
+  name: valet-pod
+spec:
+  selector:
+    matchLabels:
+      app: valet-pod
+  replicas: 1
+  template:
+    metadata:
+      labels:
+        app: valet-pod
+        tenantid: softwareag
+    spec:
+      containers:
+        - name: valet-pod
+          image: ubuntu
+          command: ["/bin/bash", "-c"]
+          args:
+            - apt-get update -y;
+              apt-get install -y curl traceroute net-tools iputils-ping;
+              echo "Sleeping for 5000";
+              sleep 5000;
