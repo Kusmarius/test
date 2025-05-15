@@ -43,3 +43,21 @@ jobs:
           docker build -t $FULL_TAG .
           docker push $FULL_TAG
 
+      - name: Set up Terraform
+        uses: hashicorp/setup-terraform@v3
+        with:
+          terraform_version: 1.12.0  # ili tvoja verzija
+
+      - name: Terraform Init
+        working-directory: .terraform/dev
+        run: terraform init
+
+      - name: Terraform Fmt Check
+        working-directory: .terraform/dev
+        run: terraform fmt -check -recursive
+
+      - name: Terraform Plan
+        working-directory: .terraform/dev
+        run: |
+          IMAGE_TAG="${GITHUB_REF_NAME}-${GITHUB_SHA::7}"
+          terraform plan -target=module.ecs -var="image_tag=${IMAGE_TAG}"
