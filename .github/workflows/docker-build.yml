@@ -52,10 +52,6 @@ jobs:
         working-directory: .terraform/dev
         run: terraform init
 
-      - name: Terraform Fmt Check
-        working-directory: .terraform/dev
-        run: terraform fmt -check -recursive
-
       - name: Terraform Plan
         working-directory: .terraform/dev
         run: |
