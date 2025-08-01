@@ -2,8 +2,9 @@ name: List Active Load Balancers in US Regions
 
 on:
   push:
-    tags:
-      - 'v*'  # Ovaj pattern pokreće workflow samo na tagove koji počinju sa 'v' (možeš promeniti prema potrebama)
+    branches:
+      - main
+      - master
   workflow_dispatch:
 
 jobs:
@@ -32,15 +33,15 @@ jobs:
           # Iterate through all regions
           for region in $REGIONS; do
             echo "Listing active Load Balancers in region: $region"
-
+            
             # Get load balancers in the region
             load_balancers=$(aws elbv2 describe-load-balancers --region $region --output json)
-
+            
             if [ $? -ne 0 ]; then
               echo "AWS CLI command failed in region $region"
               exit 1
             fi
-
+            
             # Iterate over each load balancer to check tags
             for arn in $(echo "$load_balancers" | jq -r '.LoadBalancers[] | select(.State.Code == "active") | .LoadBalancerArn'); do
               # For each load balancer, get tags
