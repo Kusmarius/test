@@ -1,4 +1,4 @@
-name: List Active Load Balancers in US Regions
+name: Dynamic ECS Deploy for Active Regions
 
 on:
   push:
@@ -8,7 +8,7 @@ on:
   workflow_dispatch:
 
 jobs:
-  list-lbs:
+  deploy-ecs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -28,29 +28,60 @@ jobs:
           echo "Found AWS regions: $regions"
           echo "REGIONS=$regions" >> $GITHUB_ENV
 
-      - name: List Active Load Balancers across US regions with 'Environment stage' tag
+      - name: Map regions to corresponding modules and deploy
         run: |
-          # Iterate through all regions
+          # Define module map for regions
+          declare -A region_modules
+          region_modules["us-east-1"]="ecs_deploy_prod"
+          region_modules["us-west-2"]="ecs_deploy_prod_oregon"
+          region_modules["us-east-2"]="ecs_deploy_prod_ohio"
+          
+          # Iterate through regions
           for region in $REGIONS; do
-            echo "Listing active Load Balancers in region: $region"
+            echo "Checking active load balancers in region: $region"
             
             # Get load balancers in the region
             load_balancers=$(aws elbv2 describe-load-balancers --region $region --output json)
-            
+
             if [ $? -ne 0 ]; then
               echo "AWS CLI command failed in region $region"
               exit 1
             fi
-            
-            # Iterate over each load balancer to check tags
+
+            # Check if there are active load balancers with the 'Environment: stage' tag
+            active_lb_found=false
+
             for arn in $(echo "$load_balancers" | jq -r '.LoadBalancers[] | select(.State.Code == "active") | .LoadBalancerArn'); do
-              # For each load balancer, get tags
               tags=$(aws elbv2 describe-tags --resource-arn "$arn" --region $region --output json)
 
               # Check if the load balancer has the 'Environment: stage' tag
               if echo "$tags" | jq -e '.TagDescriptions[].Tags[] | select(.Key == "Environment" and .Value == "stage")' > /dev/null; then
-                echo "Found Load Balancer with 'Environment: stage' tag: $arn"
+                echo "Found active Load Balancer with 'Environment: stage' tag: $arn in region $region"
+                active_lb_found=true
+                break
               fi
             done
+
+            # If no active LB with 'Environment: stage' tag is found, skip the region
+            if [ "$active_lb_found" = false ]; then
+              echo "No active Load Balancer with 'Environment: stage' tag in region $region, skipping."
+              continue
+            fi
+
+            # Check if the region has a corresponding module
+            if [ -z "${region_modules[$region]}" ]; then
+              echo "No module found for region $region, skipping."
+              continue
+            fi
+
+            # Set the module to deploy
+            module_to_deploy="${region_modules[$region]}"
+            echo "Module to deploy: $module_to_deploy"
+
+            # Initialize terraform for the specific region
+            terraform init -backend-config="region=$region"
+
+            # Apply Terraform only for the specific region/module
+            terraform apply -target=module.$module_to_deploy -auto-approve
           done
 
