@@ -28,7 +28,7 @@ jobs:
           echo "Found AWS regions: $regions"
           echo "REGIONS=$regions" >> $GITHUB_ENV
 
-      - name: List Active Load Balancers across US regions with 'Environment: stage' tag
+      - name: List Active Load Balancers across US regions with 'Environment stage' tag
         run: |
           # Iterate through all regions
           for region in $REGIONS; do
