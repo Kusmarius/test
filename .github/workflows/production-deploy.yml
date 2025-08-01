@@ -37,6 +37,7 @@ jobs:
               echo "AWS CLI command failed in region $region"
               exit 1
             fi
-            echo "$load_balancers" | jq -r '.LoadBalancers[] | select(.State.Code == "active") | .LoadBalancerArn'
+
+            echo "$load_balancers" | jq -r '.LoadBalancers[] | select(.State.Code == "active") | select(.Tags[]? | .Key == "Environment" and .Value == "stage") | .LoadBalancerArn'
           done
 
