@@ -28,16 +28,29 @@ jobs:
           echo "Found AWS regions: $regions"
           echo "REGIONS=$regions" >> $GITHUB_ENV
 
-      - name: List Active Load Balancers across US regions
+      - name: List Active Load Balancers across US regions with 'Environment: stage' tag
         run: |
+          # Iterate through all regions
           for region in $REGIONS; do
             echo "Listing active Load Balancers in region: $region"
+            
+            # Get load balancers in the region
             load_balancers=$(aws elbv2 describe-load-balancers --region $region --output json)
+            
             if [ $? -ne 0 ]; then
               echo "AWS CLI command failed in region $region"
               exit 1
             fi
+            
+            # Iterate over each load balancer to check tags
+            for arn in $(echo "$load_balancers" | jq -r '.LoadBalancers[] | select(.State.Code == "active") | .LoadBalancerArn'); do
+              # For each load balancer, get tags
+              tags=$(aws elbv2 describe-tags --resource-arn "$arn" --region $region --output json)
 
-            echo "$load_balancers" | jq -r '.LoadBalancers[] | select(.State.Code == "active") | select(.Tags[]? | .Key == "Environment" and .Value == "stage") | .LoadBalancerArn'
+              # Check if the load balancer has the 'Environment: stage' tag
+              if echo "$tags" | jq -e '.TagDescriptions[].Tags[] | select(.Key == "Environment" and .Value == "stage")' > /dev/null; then
+                echo "Found Load Balancer with 'Environment: stage' tag: $arn"
+              fi
+            done
           done
 
