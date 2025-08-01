@@ -1,0 +1,33 @@
+name: List Active Load Balancers in US Regions
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch: 
+
+jobs:
+  list-lbs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v2
+
+      - name: Set up AWS CLI
+        uses: aws-actions/configure-aws-credentials@v1
+        with:
+          aws-access-key-id: ${{ secrets.AWS_ACCESS_KEY_ID }}
+          aws-secret-access-key: ${{ secrets.AWS_SECRET_ACCESS_KEY }}
+          aws-region: us-east-1  # Možeš postaviti bilo koji region, nije bitno jer ćemo kasnije menjati region
+
+      - name: List Active Load Balancers across US regions
+        run: |
+          regions=("us-east-1" "us-east-2" "us-west-1" "us-west-2" "us-central-1" "us-west-3")
+
+          for region in "${regions[@]}"; do
+            echo "Listing active Load Balancers in region: $region"
+            
+            aws elbv2 describe-load-balancers --region $region --output json | jq -r \
+              '.LoadBalancers[] | select(.State.Code == "active") | .LoadBalancerArn'
+          done
+
