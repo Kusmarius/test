@@ -45,6 +45,7 @@ jobs:
           echo "REGIONS=$regions" >> $GITHUB_ENV
 
       - name: Map regions to corresponding modules and deploy
+        working-directory: terraform-repo/stage
         run: |
           # Define module map for regions
           declare -A region_modules
